@@ -5,15 +5,6 @@ use App\Models\BlogPost;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/chat/sections', [ChatController::class, 'sections']);
-
-// TEMPORARY: Reset admin password - DELETE AFTER USE
-Route::get('/reset-admin-pwd', function () {
-    $user = \App\Models\User::where('email', 'admin@nube.it')->first();
-    if (!$user) return response()->json(['error' => 'User not found']);
-    $user->password = \Illuminate\Support\Facades\Hash::make('password');
-    $user->save();
-    return response()->json(['ok' => true, 'hash_preview' => substr($user->password, 0, 20) . '...']);
-});
 Route::post('/chat/message', [ChatController::class, 'chat'])->middleware('chat.ratelimit');
 
 // Blog API
