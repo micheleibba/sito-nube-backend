@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\BlogPost;
 use App\Models\BlogSuggestion;
+use App\Services\BlogScraperService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
@@ -20,7 +20,7 @@ class BlogSuggestionController extends Controller
         return view('admin.blog.suggestions', compact('suggestions'));
     }
 
-    public function generate()
+    public function generate(BlogScraperService $scraper)
     {
         // Check if already running
         $status = Cache::get('scraper_status', []);
@@ -28,13 +28,83 @@ class BlogSuggestionController extends Controller
             return redirect()->route('blog.suggestions')->with('error', 'Lo scraper è già in esecuzione.');
         }
 
-        // Launch in background
+        set_time_limit(600); // 10 minutes
+        ignore_user_abort(true); // Continue even if user navigates away
+
+        // Send redirect immediately, then continue processing
+        // This won't work perfectly but the status bar will track progress
+        Cache::put('scraper_status', [
+            'running' => true,
+            'phase' => 'Avvio scraper...',
+            'generated' => 0,
+            'total' => 30,
+            'processed' => 0,
+            'started_at' => now()->toISOString(),
+        ], 600);
+
+        // Try background execution first (works on some hosts)
+        $launched = $this->tryBackgroundLaunch();
+
+        if ($launched) {
+            return redirect()->route('blog.suggestions')->with('success', 'Scraper avviato! Segui il progresso nella barra in basso.');
+        }
+
+        // Fallback: run inline (blocks the request but ignore_user_abort keeps it going)
+        try {
+            $scraper->scrapeAndSuggest(30);
+        } catch (\Exception $e) {
+            Cache::put('scraper_status', [
+                'running' => false,
+                'phase' => 'Errore: ' . $e->getMessage(),
+                'generated' => 0,
+                'error' => true,
+            ], 300);
+        }
+
+        $status = Cache::get('scraper_status', []);
+        Cache::put('scraper_status', [
+            ...$status,
+            'running' => false,
+            'phase' => 'Completato!',
+        ], 300);
+
+        return redirect()->route('blog.suggestions')->with('success', ($status['generated'] ?? 0) . ' suggerimenti generati.');
+    }
+
+    private function tryBackgroundLaunch(): bool
+    {
         $phpBinary = PHP_BINARY;
         $artisan = base_path('artisan');
-        $command = "{$phpBinary} {$artisan} blog:scrape --max=30 > /dev/null 2>&1 &";
-        exec($command);
 
-        return redirect()->route('blog.suggestions')->with('success', 'Scraper avviato! Segui il progresso nella barra in basso.');
+        // Try exec
+        if (function_exists('exec') && !in_array('exec', array_map('trim', explode(',', ini_get('disable_functions'))))) {
+            exec("{$phpBinary} {$artisan} blog:scrape --max=30 > /dev/null 2>&1 &");
+            return true;
+        }
+
+        // Try proc_open
+        if (function_exists('proc_open') && !in_array('proc_open', array_map('trim', explode(',', ini_get('disable_functions'))))) {
+            $proc = proc_open(
+                "{$phpBinary} {$artisan} blog:scrape --max=30",
+                [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']],
+                $pipes,
+                base_path()
+            );
+            if (is_resource($proc)) {
+                fclose($pipes[0]);
+                fclose($pipes[1]);
+                fclose($pipes[2]);
+                return true;
+            }
+        }
+
+        // Try shell_exec
+        if (function_exists('shell_exec') && !in_array('shell_exec', array_map('trim', explode(',', ini_get('disable_functions'))))) {
+            shell_exec("{$phpBinary} {$artisan} blog:scrape --max=30 > /dev/null 2>&1 &");
+            return true;
+        }
+
+        return false;
     }
 
     public function status()
@@ -42,12 +112,11 @@ class BlogSuggestionController extends Controller
         $status = Cache::get('scraper_status', [
             'running' => false,
             'phase' => '',
-            'found' => 0,
+            'generated' => 0,
             'total' => 0,
             'processed' => 0,
         ]);
 
-        // Count current pending suggestions
         $status['pending_count'] = BlogSuggestion::where('status', 'pending')->count();
 
         return response()->json($status);
@@ -100,7 +169,7 @@ class BlogSuggestionController extends Controller
                 ]);
                 $s->update(['status' => 'approved']);
             }
-            return back()->with('success', $suggestions->count() . ' articoli approvati come bozze.');
+            return back()->with('success', $suggestions->count() . ' articoli approvati e pubblicati.');
         }
 
         if ($action === 'reject') {

@@ -12,6 +12,9 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Scraper status (public, polled by JS)
+Route::get('/blog/suggestions/status', [BlogSuggestionController::class, 'status'])->name('blog.suggestions.status');
+
 // Auth
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
@@ -40,7 +43,6 @@ Route::middleware('auth')->group(function () {
         // Blog Suggestions (Scraper) - must be before {post} wildcard
         Route::get('/blog/suggestions', [BlogSuggestionController::class, 'index'])->name('blog.suggestions');
         Route::post('/blog/suggestions/generate', [BlogSuggestionController::class, 'generate'])->name('blog.suggestions.generate');
-        Route::get('/blog/suggestions/status', [BlogSuggestionController::class, 'status'])->name('blog.suggestions.status');
         Route::post('/blog/suggestions/{suggestion}/approve', [BlogSuggestionController::class, 'approve'])->name('blog.suggestions.approve');
         Route::post('/blog/suggestions/{suggestion}/reject', [BlogSuggestionController::class, 'reject'])->name('blog.suggestions.reject');
         Route::post('/blog/suggestions/bulk', [BlogSuggestionController::class, 'bulk'])->name('blog.suggestions.bulk');
