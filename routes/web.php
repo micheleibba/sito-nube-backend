@@ -14,6 +14,7 @@ Route::get('/', function () {
 
 // Scraper status (public, polled by JS)
 Route::get('/blog/suggestions/status', [BlogSuggestionController::class, 'status'])->name('blog.suggestions.status');
+Route::get('/blog/suggestions/stop', [BlogSuggestionController::class, 'stop'])->name('blog.suggestions.stop');
 
 // Auth
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');

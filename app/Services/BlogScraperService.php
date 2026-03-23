@@ -29,6 +29,12 @@ class BlogScraperService
         Cache::put('scraper_status', array_merge($current, $data), 600);
     }
 
+    private function shouldStop(): bool
+    {
+        $status = Cache::get('scraper_status', []);
+        return !empty($status['stop_requested']);
+    }
+
     public function scrapeAndSuggest(int $maxArticles = 15): array
     {
         $results = [];
@@ -82,6 +88,11 @@ class BlogScraperService
 
         // Phase 3: Process each article
         foreach ($selectedArticles as $idx => $article) {
+            if ($this->shouldStop()) {
+                $this->updateStatus(['running' => false, 'phase' => 'Fermato manualmente.']);
+                return $results;
+            }
+
             $this->updateStatus([
                 'phase' => "Rielaborazione: " . Str::limit($article['title'], 50) . "...",
                 'processed' => $idx,

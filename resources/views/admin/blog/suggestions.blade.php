@@ -8,6 +8,14 @@
         <h1 class="text-2xl font-bold tracking-tight">Suggerimenti</h1>
         <p class="text-sm text-surface-500 mt-1">Articoli generati dalle migliori testate tech</p>
     </div>
+    <div class="flex items-center gap-2">
+    <button type="button" id="stop-scraper-btn" onclick="stopScraper()" style="display:none"
+        class="inline-flex items-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-400 border border-red-500/20 text-sm font-semibold rounded-xl hover:bg-red-500/20 transition">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z" />
+        </svg>
+        Stop
+    </button>
     <button type="button" id="start-scraper-btn" onclick="startScraper()"
         class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent to-accent-dark text-white text-sm font-semibold rounded-xl hover:from-accent-light hover:to-accent transition-all duration-200 shadow-lg shadow-accent/20">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -15,13 +23,15 @@
         </svg>
         <span class="btn-text">Genera suggerimenti</span>
     </button>
+    </div>
     <script>
     function startScraper() {
         var btn = document.getElementById('start-scraper-btn');
+        var stopBtn = document.getElementById('stop-scraper-btn');
         btn.disabled = true;
-        btn.querySelector('.btn-text').textContent = 'Avviato...';
+        btn.querySelector('.btn-text').textContent = 'In esecuzione...';
+        stopBtn.style.display = 'inline-flex';
 
-        // Fire and forget - fastcgi_finish_request will release the connection
         fetch('{{ route("blog.suggestions.run") }}', {
             method: 'POST',
             headers: {
@@ -29,15 +39,26 @@
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Accept': 'application/json',
             },
-        }).catch(function() {
-            // Connection might timeout but scraper continues server-side
-        });
-
-        // Reset button after 3s
-        setTimeout(function() {
-            btn.querySelector('.btn-text').textContent = 'In esecuzione...';
-        }, 1000);
+        }).catch(function() {});
     }
+
+    function stopScraper() {
+        fetch('{{ route("blog.suggestions.stop") }}').then(function() {
+            document.getElementById('stop-scraper-btn').style.display = 'none';
+            var btn = document.getElementById('start-scraper-btn');
+            btn.disabled = false;
+            btn.querySelector('.btn-text').textContent = 'Genera suggerimenti';
+        });
+    }
+
+    // Show stop button if scraper is already running
+    fetch('{{ route("blog.suggestions.status") }}').then(r => r.json()).then(function(data) {
+        if (data.running) {
+            document.getElementById('start-scraper-btn').disabled = true;
+            document.getElementById('start-scraper-btn').querySelector('.btn-text').textContent = 'In esecuzione...';
+            document.getElementById('stop-scraper-btn').style.display = 'inline-flex';
+        }
+    });
     </script>
 </div>
 

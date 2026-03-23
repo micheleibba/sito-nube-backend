@@ -98,6 +98,18 @@ class BlogSuggestionController extends Controller
         return response()->json(['ok' => true, 'generated' => $s['generated'] ?? 0]);
     }
 
+    public function stop()
+    {
+        Cache::put('scraper_status', [
+            'running' => false,
+            'phase' => 'Fermato manualmente.',
+            'generated' => 0,
+            'stop_requested' => true,
+        ], 300);
+
+        return response()->json(['ok' => true]);
+    }
+
     public function status()
     {
         $status = Cache::get('scraper_status', [
