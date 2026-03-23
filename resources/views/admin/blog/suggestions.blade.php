@@ -8,15 +8,37 @@
         <h1 class="text-2xl font-bold tracking-tight">Suggerimenti</h1>
         <p class="text-sm text-surface-500 mt-1">Articoli generati dalle migliori testate tech</p>
     </div>
-    <form method="POST" action="{{ route('blog.suggestions.generate') }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('.btn-text').textContent='Generazione in corso...';">
-        @csrf
-        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent to-accent-dark text-white text-sm font-semibold rounded-xl hover:from-accent-light hover:to-accent transition-all duration-200 shadow-lg shadow-accent/20">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-            </svg>
-            <span class="btn-text">Genera suggerimenti</span>
-        </button>
-    </form>
+    <button type="button" id="start-scraper-btn" onclick="startScraper()"
+        class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent to-accent-dark text-white text-sm font-semibold rounded-xl hover:from-accent-light hover:to-accent transition-all duration-200 shadow-lg shadow-accent/20">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+        </svg>
+        <span class="btn-text">Genera suggerimenti</span>
+    </button>
+    <script>
+    function startScraper() {
+        var btn = document.getElementById('start-scraper-btn');
+        btn.disabled = true;
+        btn.querySelector('.btn-text').textContent = 'Avviato...';
+
+        // Fire and forget - fastcgi_finish_request will release the connection
+        fetch('{{ route("blog.suggestions.run") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            },
+        }).catch(function() {
+            // Connection might timeout but scraper continues server-side
+        });
+
+        // Reset button after 3s
+        setTimeout(function() {
+            btn.querySelector('.btn-text').textContent = 'In esecuzione...';
+        }, 1000);
+    }
+    </script>
 </div>
 
 @if($suggestions->count())

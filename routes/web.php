@@ -43,6 +43,7 @@ Route::middleware('auth')->group(function () {
         // Blog Suggestions (Scraper) - must be before {post} wildcard
         Route::get('/blog/suggestions', [BlogSuggestionController::class, 'index'])->name('blog.suggestions');
         Route::post('/blog/suggestions/generate', [BlogSuggestionController::class, 'generate'])->name('blog.suggestions.generate');
+        Route::post('/blog/suggestions/run', [BlogSuggestionController::class, 'run'])->name('blog.suggestions.run');
         Route::post('/blog/suggestions/{suggestion}/approve', [BlogSuggestionController::class, 'approve'])->name('blog.suggestions.approve');
         Route::post('/blog/suggestions/{suggestion}/reject', [BlogSuggestionController::class, 'reject'])->name('blog.suggestions.reject');
         Route::post('/blog/suggestions/bulk', [BlogSuggestionController::class, 'bulk'])->name('blog.suggestions.bulk');
